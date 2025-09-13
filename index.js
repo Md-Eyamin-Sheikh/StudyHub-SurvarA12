@@ -30,16 +30,27 @@ async function run() {
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } finally {
-    // Ensures that the client will close when you finish/error
-    await client.close();
+  } catch (error) {
+    console.error(error);
   }
 }
 run().catch(console.dir);
 
 // Sample route
 app.get('/', (req, res) => {
-  res.send('Server is running');
+  res.send('Server is running...hi');
+});
+
+// Route to fetch data from MongoDB
+app.get('/data', async (req, res) => {
+  try {
+    const database = client.db("StudyHubA12"); 
+    const collection = database.collection("StudyHub"); 
+    const data = await collection.find({}).toArray();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Start the server
