@@ -84,7 +84,130 @@ app.get('/data/:id', async (req, res) => {
     }
 });
 
-// API endpoint to check if user has booked a session
+// API endpoint to get booked sessions with details
+app.get('/api/student/booked-sessions/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const database = client.db("StudyHubA12");
+    const bookedSessionCollection = database.collection("bookedSession");
+    const studySessionCollection = database.collection("StudyHub");
+    
+    const bookedSessions = await bookedSessionCollection.find({ studentEmail: email }).toArray();
+    
+    // Get full session details for each booked session
+    const sessionsWithDetails = await Promise.all(
+      bookedSessions.map(async (booking) => {
+        const sessionDetails = await studySessionCollection.findOne({ _id: booking.studySessionId });
+        return { ...booking, sessionDetails };
+      })
+    );
+    
+    res.json({ success: true, bookedSessions: sessionsWithDetails });
+  } catch (error) {
+    console.error('Error fetching booked sessions:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// API endpoints for reviews
+app.post('/api/reviews', async (req, res) => {
+  try {
+    const { studentEmail, studySessionId, rating, comment } = req.body;
+    const database = client.db("StudyHubA12");
+    const reviewsCollection = database.collection("reviews");
+    
+    const reviewData = {
+      studentEmail,
+      studySessionId,
+      rating,
+      comment,
+      createdAt: new Date()
+    };
+    
+    const result = await reviewsCollection.insertOne(reviewData);
+    res.json({ success: true, reviewId: result.insertedId });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+app.get('/api/reviews/:sessionId', async (req, res) => {
+  try {
+    const database = client.db("StudyHubA12");
+    const reviewsCollection = database.collection("reviews");
+    const reviews = await reviewsCollection.find({ studySessionId: req.params.sessionId }).toArray();
+    res.json({ success: true, reviews });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// API endpoints for notes
+app.post('/api/notes', async (req, res) => {
+  try {
+    const { email, title, description } = req.body;
+    const database = client.db("StudyHubA12");
+    const notesCollection = database.collection("notes");
+    
+    const noteData = { email, title, description, createdAt: new Date() };
+    const result = await notesCollection.insertOne(noteData);
+    res.json({ success: true, noteId: result.insertedId });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+app.get('/api/notes/:email', async (req, res) => {
+  try {
+    const database = client.db("StudyHubA12");
+    const notesCollection = database.collection("notes");
+    const notes = await notesCollection.find({ email: req.params.email }).toArray();
+    res.json({ success: true, notes });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+app.put('/api/notes/:id', async (req, res) => {
+  try {
+    const { title, description } = req.body;
+    const database = client.db("StudyHubA12");
+    const notesCollection = database.collection("notes");
+    
+    const result = await notesCollection.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { title, description, updatedAt: new Date() } }
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+app.delete('/api/notes/:id', async (req, res) => {
+  try {
+    const database = client.db("StudyHubA12");
+    const notesCollection = database.collection("notes");
+    await notesCollection.deleteOne({ _id: new ObjectId(req.params.id) });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// API endpoint for study materials
+app.get('/api/materials/:sessionId', async (req, res) => {
+  try {
+    const database = client.db("StudyHubA12");
+    const materialsCollection = database.collection("studyMaterials");
+    const materials = await materialsCollection.find({ studySessionId: req.params.sessionId }).toArray();
+    res.json({ success: true, materials });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// API endpoint to check if already booked a session
 app.get('/api/booked-sessions/:email', async (req, res) => {
   try {
     const { email } = req.params;
