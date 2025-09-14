@@ -84,6 +84,67 @@ app.get('/data/:id', async (req, res) => {
     }
 });
 
+// API endpoint to check if user has booked a session
+app.get('/api/booked-sessions/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const database = client.db("StudyHubA12");
+    const bookedSessionCollection = database.collection("bookedSession");
+    
+    const bookedSessions = await bookedSessionCollection.find({ studentEmail: email }).toArray();
+    const sessionIds = bookedSessions.map(booking => booking.studySessionId);
+    
+    res.json({ success: true, bookedSessions: sessionIds });
+  } catch (error) {
+    console.error('Error fetching booked sessions:', error);
+    res.status(500).json({ success: false, message: 'Server error while fetching booked sessions' });
+  }
+});
+
+// API endpoint to book a session
+app.post('/api/book-session', async (req, res) => {
+  try {
+    const { studentEmail, studySessionId, tutorEmail, sessionTitle, registrationFee } = req.body;
+    
+    const database = client.db("StudyHubA12");
+    const bookedSessionCollection = database.collection("bookedSession");
+    
+    // Check if already booked
+    const existingBooking = await bookedSessionCollection.findOne({
+      studentEmail,
+      studySessionId
+    });
+    
+    if (existingBooking) {
+      return res.status(400).json({ success: false, message: 'Session already booked' });
+    }
+    
+    const bookingData = {
+      studentEmail,
+      studySessionId,
+      tutorEmail,
+      sessionTitle,
+      registrationFee: registrationFee || 0,
+      bookedAt: new Date()
+    };
+    
+    const result = await bookedSessionCollection.insertOne(bookingData);
+    
+    if (result.insertedId) {
+      res.status(201).json({ 
+        success: true, 
+        message: 'Session booked successfully',
+        bookingId: result.insertedId 
+      });
+    } else {
+      res.status(400).json({ success: false, message: 'Failed to book session' });
+    }
+  } catch (error) {
+    console.error('Error booking session:', error);
+    res.status(500).json({ success: false, message: 'Server error while booking session' });
+  }
+});
+
 // Start the server
 app.listen(port, () => {
   console.log(`Server is listening on port ${port}`);
