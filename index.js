@@ -60,14 +60,27 @@ app.get('/data/:id', async (req, res) => {
         const id = req.params.id;
         const database = client.db("StudyHubA12"); 
         const collection = database.collection("StudyHub"); 
-        const session = await collection.findOne({ _id: new ObjectId(id) });
+        
+        let session;
+        
+        // Try to find by ObjectId first
+        if (ObjectId.isValid(id)) {
+            session = await collection.findOne({ _id: new ObjectId(id) });
+        }
+        
+        // If not found, try to find by string ID
+        if (!session) {
+            session = await collection.findOne({ _id: id });
+        }
 
         if (!session) {
-            return res.status(404).send({ message: 'Session not found' });
+            return res.status(404).json({ message: 'Session not found' });
         }
-        res.send(session);
+        
+        res.json(session);
     } catch (error) {
-        res.status(500).send({ message: 'Failed to fetch session details' });
+        console.error('Error fetching session:', error);
+        res.status(500).json({ message: 'Failed to fetch session details' });
     }
 });
 
