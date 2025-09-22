@@ -2,12 +2,16 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const Stripe = require('stripe');
 
 // Load environment variables from .env file
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 5000;
+
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Middleware
 app.use(cors());
@@ -55,6 +59,254 @@ app.get('/data', async (req, res) => {
   }
 });
 
+// Admin Routes
+
+// Get all users
+app.get('/admin/users', async (req, res) => {
+  try {
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("users");
+    const users = await collection.find({}).toArray();
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Search users by name or email
+app.get('/admin/users/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("users");
+    
+    const users = await collection.find({
+      $or: [
+        { displayName: { $regex: q, $options: 'i' } },
+        { email: { $regex: q, $options: 'i' } }
+      ]
+    }).toArray();
+    
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update user role
+app.patch('/admin/users/:userId/role', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { role } = req.body;
+    
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("users");
+    
+    const result = await collection.updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { role, updatedAt: new Date() } }
+    );
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.json({ message: 'User role updated successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all sessions for admin
+app.get('/admin/sessions', async (req, res) => {
+  try {
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("StudyHub");
+    const sessions = await collection.find({}).toArray();
+    res.json(sessions);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Approve session
+app.patch('/admin/sessions/:sessionId/approve', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const { isPaid, registrationFee } = req.body;
+    
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("StudyHub");
+    
+    const result = await collection.updateOne(
+      { _id: new ObjectId(sessionId) },
+      { 
+        $set: { 
+          status: 'approved',
+          isPaid,
+          registrationFee,
+          approvedAt: new Date()
+        } 
+      }
+    );
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+    
+    res.json({ message: 'Session approved successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Reject session
+app.patch('/admin/sessions/:sessionId/reject', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("StudyHub");
+    
+    const result = await collection.deleteOne({ _id: new ObjectId(sessionId) });
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+    
+    res.json({ message: 'Session rejected and removed successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete session
+app.delete('/admin/sessions/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("StudyHub");
+    
+    const result = await collection.deleteOne({ _id: new ObjectId(sessionId) });
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+    
+    res.json({ message: 'Session deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all materials
+app.get('/admin/materials', async (req, res) => {
+  try {
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("materials");
+    const materials = await collection.find({}).toArray();
+    res.json(materials);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete material
+app.delete('/admin/materials/:materialId', async (req, res) => {
+  try {
+    const { materialId } = req.params;
+    
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("materials");
+    
+    const result = await collection.deleteOne({ _id: new ObjectId(materialId) });
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: 'Material not found' });
+    }
+    
+    res.json({ message: 'Material deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Seed sample data for testing (remove in production)
+app.post('/admin/seed-data', async (req, res) => {
+  try {
+    const database = client.db("StudyHubA12");
+    
+    // Sample users
+    const usersCollection = database.collection("users");
+    const sampleUsers = [
+      {
+        _id: new ObjectId(),
+        displayName: "John Doe",
+        email: "john@example.com",
+        role: "student",
+        createdAt: new Date()
+      },
+      {
+        _id: new ObjectId(),
+        displayName: "Jane Smith",
+        email: "jane@example.com",
+        role: "tutor",
+        createdAt: new Date()
+      },
+      {
+        _id: new ObjectId(),
+        displayName: "Admin User",
+        email: "admin@example.com",
+        role: "admin",
+        createdAt: new Date()
+      }
+    ];
+    
+    // Sample materials
+    const materialsCollection = database.collection("materials");
+    const sampleMaterials = [
+      {
+        _id: new ObjectId(),
+        title: "Introduction to React",
+        description: "Basic concepts of React development",
+        uploadedBy: "Jane Smith",
+        uploadDate: new Date(),
+        fileType: "application/pdf",
+        fileSize: "2.5 MB",
+        downloadUrl: "https://example.com/react-intro.pdf"
+      },
+      {
+        _id: new ObjectId(),
+        title: "JavaScript Fundamentals",
+        description: "Core JavaScript concepts and examples",
+        uploadedBy: "John Doe",
+        uploadDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), 
+        fileType: "video/mp4",
+        fileSize: "150 MB",
+        downloadUrl: "https://example.com/js-fundamentals.mp4"
+      },
+      {
+        _id: new ObjectId(),
+        title: "Outdated Material",
+        description: "This material is outdated and should be removed",
+        uploadedBy: "Old User",
+        uploadDate: new Date(Date.now() - 200 * 24 * 60 * 60 * 1000), 
+        fileType: "application/pdf",
+        fileSize: "1.2 MB"
+      }
+    ];
+    
+    // Insert sample data
+    await usersCollection.insertMany(sampleUsers);
+    await materialsCollection.insertMany(sampleMaterials);
+    
+    res.json({ message: 'Sample data seeded successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/data/:id', async (req, res) => {
     try {
         const id = req.params.id;
@@ -84,7 +336,24 @@ app.get('/data/:id', async (req, res) => {
     }
 });
 
-// API endpoint to get booked sessions with details
+// Stripe payment intent endpoint
+app.post('/create-payment-intent', async (req, res) => {
+  const { amount } = req.body;
+  try {
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount * 100, 
+      currency: 'usd',
+      payment_method_types: ['card'],
+    });
+
+    res.send({
+      clientSecret: paymentIntent.client_secret,
+    });
+  } catch (error) {
+    res.status(500).send({ error: error.message });
+  }
+});
+
 app.get('/api/student/booked-sessions/:email', async (req, res) => {
   try {
     const { email } = req.params;
@@ -265,6 +534,132 @@ app.post('/api/book-session', async (req, res) => {
   } catch (error) {
     console.error('Error booking session:', error);
     res.status(500).json({ success: false, message: 'Server error while booking session' });
+  }
+});
+
+// Tutor Dashboard API endpoints
+
+// Create study session
+app.post('/api/tutor/sessions', async (req, res) => {
+  try {
+    const sessionData = {
+      ...req.body,
+      registrationFee: 0,
+      status: 'pending',
+      createdAt: new Date()
+    };
+    
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("StudyHub");
+    const result = await collection.insertOne(sessionData);
+    
+    res.json({ success: true, sessionId: result.insertedId });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Get tutor's sessions
+app.get('/api/tutor/sessions/:email', async (req, res) => {
+  try {
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("StudyHub");
+    const sessions = await collection.find({ tutorEmail: req.params.email }).toArray();
+    res.json({ success: true, sessions });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Resubmit rejected session
+app.put('/api/tutor/sessions/:id/resubmit', async (req, res) => {
+  try {
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("StudyHub");
+    
+    await collection.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { status: 'pending', resubmittedAt: new Date() } }
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Upload materials
+app.post('/api/tutor/materials', async (req, res) => {
+  try {
+    const materialData = {
+      ...req.body,
+      uploadedAt: new Date()
+    };
+    
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("studyMaterials");
+    const result = await collection.insertOne(materialData);
+    
+    res.json({ success: true, materialId: result.insertedId });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Get tutor's materials
+app.get('/api/tutor/materials/:email', async (req, res) => {
+  try {
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("studyMaterials");
+    const materials = await collection.find({ tutorEmail: req.params.email }).toArray();
+    res.json({ success: true, materials });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Update material
+app.put('/api/tutor/materials/:id', async (req, res) => {
+  try {
+    const { title, imageUrl, driveLink } = req.body;
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("studyMaterials");
+    
+    await collection.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { title, imageUrl, driveLink, updatedAt: new Date() } }
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Delete material
+app.delete('/api/tutor/materials/:id', async (req, res) => {
+  try {
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("studyMaterials");
+    await collection.deleteOne({ _id: new ObjectId(req.params.id) });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Get approved sessions for material upload
+app.get('/api/tutor/approved-sessions/:email', async (req, res) => {
+  try {
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("StudyHub");
+    const sessions = await collection.find({ 
+      tutorEmail: req.params.email, 
+      status: 'approved' 
+    }).toArray();
+    res.json({ success: true, sessions });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
