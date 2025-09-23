@@ -89,6 +89,24 @@ app.post('/users', async (req, res) => {
   }
 });
 
+// Get user role by UID
+app.get('/users/:uid/role', async (req, res) => {
+  try {
+    const { uid } = req.params;
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("users");
+    
+    const user = await collection.findOne({ uid });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({ role: user.role });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Admin Routes
 
 // Get all users
