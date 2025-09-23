@@ -59,6 +59,36 @@ app.get('/data', async (req, res) => {
   }
 });
 
+// User registration API
+app.post('/users', async (req, res) => {
+  try {
+    const { uid, name, email, photoURL, role } = req.body;
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("users");
+    
+    // Check if user already exists
+    const existingUser = await collection.findOne({ uid });
+    if (existingUser) {
+      return res.status(200).json({ message: 'User already exists', user: existingUser });
+    }
+    
+    const userData = {
+      uid,
+      displayName: name,
+      email,
+      photoURL,
+      role: role || 'student',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    const result = await collection.insertOne(userData);
+    res.status(201).json({ message: 'User created successfully', userId: result.insertedId });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Admin Routes
 
 // Get all users
