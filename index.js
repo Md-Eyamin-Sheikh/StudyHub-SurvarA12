@@ -14,8 +14,23 @@ const port = process.env.PORT || 5000;
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+// Cookie options for secure authentication
+const cookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+};
+
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://ephemeral-custard-5954c6.netlify.app"
+    ],
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // MongoDB URI
@@ -116,6 +131,47 @@ app.post('/auth/login', async (req, res) => {
         displayName: user.displayName, 
         role: user.role 
       } 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create token
+app.post("/jwt", async (req, res) => {
+  const user = req.body;
+  console.log("user for token", user);
+  const token = jwt.sign(user, process.env.JWT_SECRET);
+  res.cookie("token", token, cookieOptions).send({ success: true });
+});
+
+// Clearing token
+app.post("/logout", async (req, res) => {
+  const user = req.body;
+  console.log("logging out", user);
+  res
+    .clearCookie("token", { ...cookieOptions, maxAge: 0 })
+    .send({ success: true });
+});
+
+// Get user data by UID
+app.get('/users/:uid', async (req, res) => {
+  try {
+    const { uid } = req.params;
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("users");
+    
+    const user = await collection.findOne({ uid });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({ 
+      uid: user.uid, 
+      email: user.email, 
+      displayName: user.displayName, 
+      role: user.role,
+      photoURL: user.photoURL 
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
