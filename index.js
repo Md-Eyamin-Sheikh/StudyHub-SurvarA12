@@ -580,6 +580,18 @@ app.post('/api/tutor/materials', async (req, res) => {
   }
 });
 
+// Get all materials from all tutors (for admin)
+app.get('/api/tutor/materials/all', async (req, res) => {
+  try {
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("studyMaterials");
+    const materials = await collection.find({}).toArray();
+    res.json({ success: true, materials });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 // Get tutor's materials
 app.get('/api/tutor/materials/:email', async (req, res) => {
   try {
