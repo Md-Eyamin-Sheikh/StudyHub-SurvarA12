@@ -245,17 +245,28 @@ app.patch('/admin/sessions/:sessionId/approve', async (req, res) => {
 app.patch('/admin/sessions/:sessionId/reject', async (req, res) => {
   try {
     const { sessionId } = req.params;
+    const { reason, response } = req.body;
     
     const database = client.db("StudyHubA12");
     const collection = database.collection("StudyHub");
     
-    const result = await collection.deleteOne({ _id: new ObjectId(sessionId) });
+    const result = await collection.updateOne(
+      { _id: new ObjectId(sessionId) },
+      { 
+        $set: { 
+          status: 'rejected',
+          rejectionReason: reason,
+          rejectionResponse: response,
+          rejectedAt: new Date()
+        } 
+      }
+    );
     
-    if (result.deletedCount === 0) {
+    if (result.matchedCount === 0) {
       return res.status(404).json({ message: 'Session not found' });
     }
     
-    res.json({ message: 'Session rejected and removed successfully' });
+    res.json({ message: 'Session rejected successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
