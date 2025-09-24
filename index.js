@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const Stripe = require('stripe');
 
@@ -84,6 +85,38 @@ app.post('/users', async (req, res) => {
     
     const result = await collection.insertOne(userData);
     res.status(201).json({ message: 'User created successfully', userId: result.insertedId });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// JWT Login API
+app.post('/auth/login', async (req, res) => {
+  try {
+    const { uid, email } = req.body;
+    const database = client.db("StudyHubA12");
+    const collection = database.collection("users");
+    
+    const user = await collection.findOne({ uid });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const token = jwt.sign(
+      { uid: user.uid, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    res.json({ 
+      token, 
+      user: { 
+        uid: user.uid, 
+        email: user.email, 
+        displayName: user.displayName, 
+        role: user.role 
+      } 
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
