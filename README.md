@@ -7,6 +7,8 @@ A robust Node.js backend server for the StudyHub collaborative study platform, p
 ## 🔗 Live Server URL
 ```
 http://localhost:5000/
+
+https://study-hub-survar-a12.vercel.app/
 ```
 
 ## 👨‍💼 Admin Credentials

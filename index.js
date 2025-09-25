@@ -21,12 +21,16 @@ const cookieOptions = {
   sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
 };
 
+
+app.use(cors());
+
+
 // Middleware
 app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://ephemeral-custard-5954c6.netlify.app"
+      "https://resilient-vacherin-ecfaf3.netlify.app"
     ],
     credentials: true,
   })
