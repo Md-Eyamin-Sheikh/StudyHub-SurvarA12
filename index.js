@@ -22,7 +22,7 @@ const cookieOptions = {
 };
 
 
-app.use(cors());
+
 
 
 // Middleware
