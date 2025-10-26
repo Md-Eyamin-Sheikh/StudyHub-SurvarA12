@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const Stripe = require('stripe');
+const { getChatbotResponse } = require('./Chatbot');
 
 // Load environment variables from .env file
 dotenv.config();
@@ -750,6 +751,21 @@ app.get('/api/tutor/approved-sessions/:email', async (req, res) => {
     res.json({ success: true, sessions });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// AI Chatbot endpoint
+app.post('/api/chatbot', async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+    const response = await getChatbotResponse(message);
+    res.json({ response });
+  } catch (error) {
+    console.error('Chatbot API error:', error);
+    res.status(500).json({ error: 'Failed to get AI response' });
   }
 });
 
