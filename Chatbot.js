@@ -1,8 +1,20 @@
 const OpenAI = require('openai');
+require('dotenv').config();
+
+// Debug: Check if API key is loaded
+if (!process.env.OPENROUTER_API_KEY) {
+  console.error('OPENROUTER_API_KEY not found in environment variables');
+} else {
+  console.log('OPENROUTER_API_KEY loaded successfully');
+}
 
 const client = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY,
+  defaultHeaders: {
+    "HTTP-Referer": "https://resilient-vacherin-ecfaf3.netlify.app/",
+    "X-Title": "StudyHub - Collaborative Study Platform",
+  }
 });
 
 async function getChatbotResponse(userMessage) {
@@ -19,11 +31,7 @@ async function getChatbotResponse(userMessage) {
           role: "user",
           content: userMessage
         }
-      ],
-      extra_headers: {
-        "HTTP-Referer": "https://resilient-vacherin-ecfaf3.netlify.app/",
-        "X-Title": "StudyHub - Collaborative Study Platform",
-      }
+      ]
     });
 
     return completion.choices[0].message.content;
